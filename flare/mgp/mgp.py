@@ -4,7 +4,7 @@ function of the low-dimensional decomposition of Gaussian Process, \
 with little loss of accuracy. Refer to \
 `Xie et al. <https://arxiv.org/abs/2008.11796>`_, \
 `Vandermause et al. <https://www.nature.com/articles/s41524-020-0283-z>`_, \
-`Glielmo et al. <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.97.184307>`_.
+`Glielmo et al. <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.97.184307>`_
 """
 import time, os, math, inspect, subprocess, json, warnings, pickle
 import numpy as np
@@ -173,7 +173,7 @@ class MappedGaussianProcess:
         # write to lammps pair style coefficient file
         self.write_lmp_file(self.lmp_file_name + ".mgp", write_var=False)
         if self.var_map == "simple":
-            self.write_lmp_file(self.lmp_file_name + ".var", write_var=True)
+            self.write_lmp_file(self.lmp_file_name + ".std", write_var=True)
 
     def predict(
         self, atom_env: AtomicEnvironment

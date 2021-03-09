@@ -58,7 +58,7 @@ class FLARE_Calculator(Calculator):
             by default.
     """
 
-    implemented_properties = ['energy', 'forces', 'stress', 'stds']
+    implemented_properties = ["energy", "forces", "stress", "stds"]
 
     def __init__(
         self, gp_model, mgp_model=None, par=False, use_mapping=False, **kwargs
@@ -73,8 +73,7 @@ class FLARE_Calculator(Calculator):
     def get_uncertainties(self, atoms):
         return self.get_property("stds", atoms)
 
-    def calculate(self, atoms=None, properties=None,
-                  system_changes=all_changes):
+    def calculate(self, atoms=None, properties=None, system_changes=all_changes):
         """
         Calculate properties including: energy, local energies, forces,
             stress, uncertainties.
@@ -89,6 +88,10 @@ class FLARE_Calculator(Calculator):
         #     print(atoms.calc)
         #     atoms.calc.reset()  
         super().calculate(atoms=atoms, properties=properties, system_changes=system_changes)
+
+        super().calculate(
+            atoms=atoms, properties=properties, system_changes=system_changes
+        )
 
         if properties is None:
             properties = self.implemented_properties
@@ -161,7 +164,7 @@ class FLARE_Calculator(Calculator):
                 f, v, vir, e = self.mgp_model.predict(chemenv)
                 self.results["forces"][n] = f
                 self.results["partial_stresses"][n] = vir
-                self.results["stds"][n] = np.sqrt(np.absolute(v))
+                self.results["stds"][n][0] = np.sqrt(np.absolute(v))
                 self.results["local_energies"][n] = e
 
             except ValueError as err_msg:  # if lower_bound error is raised
@@ -186,12 +189,11 @@ class FLARE_Calculator(Calculator):
                 f, v, vir, e = self.mgp_model.predict(chemenv)
                 self.results["forces"][n] = f
                 self.results["partial_stresses"][n] = vir
-                self.results["stds"][n] = np.sqrt(np.absolute(v))
+                self.results["stds"][n][0] = np.sqrt(np.absolute(v))
                 self.results["local_energies"][n] = e
 
     def calculation_required(self, atoms, quantities):
         return True
-
 
     def as_dict(self):
         outdict = {}

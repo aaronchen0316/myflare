@@ -758,8 +758,7 @@ class GaussianProcess:
         else:
             n_cpus = 1
 
-        _global_training_data[self.name] = self.training_data
-        _global_training_labels[self.name] = self.training_labels_np
+        self.sync_data()
 
         energy_vector, force_array, stress_array = efs_kern_vec(
             self.name,
@@ -902,7 +901,7 @@ class GaussianProcess:
 
         self.check_L_alpha()
 
-        out_dict = deepcopy(dict(vars(self)))
+        out_dict = dict(vars(self))
 
         out_dict["training_data"] = [env.as_dict() for env in self.training_data]
 
@@ -963,6 +962,7 @@ class GaussianProcess:
                     )
             new_gp.energy_labels = deepcopy(dictionary["energy_labels"])
             new_gp.energy_labels_np = deepcopy(dictionary["energy_labels_np"])
+            new_gp.sync_data()
 
         new_gp.all_labels = np.concatenate(
             (new_gp.training_labels_np, new_gp.energy_labels_np)
@@ -1315,6 +1315,10 @@ class GaussianProcess:
         """
         return self.parallel
 
+    def __deepcopy__(self, memo):
+        # this way can also deepcopy the training data in _global_training dicts
+        return GaussianProcess.from_dict(self.as_dict())
+
     def __del__(self):
         if self is None:
             return
@@ -1322,6 +1326,8 @@ class GaussianProcess:
             return (
                 _global_training_data.pop(self.name, None),
                 _global_training_labels.pop(self.name, None),
+                _global_training_structures.pop(self.name, None),
+                _global_energy_labels.pop(self.name, None),
             )
 
     @staticmethod

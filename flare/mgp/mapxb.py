@@ -440,12 +440,7 @@ class SingleMapXbody:
                 fj_chunk = fj[gs:ge, :]
                 fdj_chunk = fdj[gs:ge, :]
                 kv_chunk = self.get_grid_kernel(
-                    kern_type,
-                    data,
-                    kernel_info,
-                    grid_chunk,
-                    fj_chunk,
-                    fdj_chunk,
+                    kern_type, data, kernel_info, grid_chunk, fj_chunk, fdj_chunk,
                 )
                 kern_vec.append(kv_chunk)
             kern_vec = np.hstack(kern_vec)
@@ -501,10 +496,7 @@ class SingleMapXbody:
 
             elif isinstance(self.svd_rank, int):
                 self.var = PCASplines(
-                    bounds[0],
-                    bounds[1],
-                    orders=self.grid_num,
-                    svd_rank=self.svd_rank,
+                    bounds[0], bounds[1], orders=self.grid_num, svd_rank=self.svd_rank,
                 )
 
         if self.var_map == "simple":
@@ -549,13 +541,30 @@ class SingleMapXbody:
         y_mean, y_var = self.GenGrid(GP)
         self.mean.set_values(y_mean)
 
-        if self.var_map == "pca" and self.svd_rank == "auto":
-            self.var = PCASplines(
-                self.bounds[0],
-                self.bounds[1],
-                orders=self.grid_num,
-                svd_rank=np.min(y_var.shape),
-            )
+        if self.var_map == "pca":
+            G = np.prod(y_var.shape[:-1])
+            full_rank = np.min((G, y_var.shape[-1]))
+
+            if self.svd_rank == "auto":
+                self.var = PCASplines(
+                    self.bounds[0],
+                    self.bounds[1],
+                    orders=self.grid_num,
+                    svd_rank=full_rank,
+                )
+            else:
+                assert isinstance(
+                    self.svd_rank, int
+                ), "Please set svd_rank to int or 'auto'"
+                assert (
+                    self.svd_rank <= full_rank
+                ), f"svd_rank={self.svd_rank} exceeds full_rank={full_rank}"
+                self.var = PCASplines(
+                    self.bounds[0],
+                    self.bounds[1],
+                    orders=self.grid_num,
+                    svd_rank=self.svd_rank,
+                )
 
         if self.var_map is not None:
             self.var.set_values(y_var)

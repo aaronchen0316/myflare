@@ -255,25 +255,13 @@ class RobustBayesianCommitteeMachine(GaussianProcess):
 
         self.training_data += [[]]
         self.training_labels += [[]]
-        self.training_labels_np += [
-            np.empty(
-                0,
-            )
-        ]
+        self.training_labels_np += [np.empty(0)]
         self.n_envs_prev += [0]
 
         self.training_structures += [[]]  # Environments of each structure
         self.energy_labels += [[]]  # Energies of training structures
-        self.energy_labels_np += [
-            np.empty(
-                0,
-            )
-        ]
-        self.all_labels += [
-            np.empty(
-                0,
-            )
-        ]
+        self.energy_labels_np += [np.empty(0)]
+        self.all_labels += [np.empty(0)]
 
         self.ky_mat += [None]
         self.force_block += [None]
@@ -1081,7 +1069,6 @@ class RobustBayesianCommitteeMachine(GaussianProcess):
         thestr += f"Training points: {sum([len(x) for x in self.training_data])}\n"
         thestr += f"Cutoffs: {self.cutoffs}\n"
         thestr += f"Number of Experts: {len(self.training_data)}\n"
-
 
         thestr += f"Number of hyperparameters: {len(self.hyps)}\n"
         thestr += f"Hyperparameters_array: {str(self.hyps)}\n"

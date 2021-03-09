@@ -14,6 +14,8 @@ def is_std_in_bound(
     noise: float,
     structure: "flare.struc.Structure",
     max_atoms_added: int = inf,
+    update_style: str = "add_n",
+    update_threshold: float = None
 ) -> (bool, List[int]):
     """
     Given an uncertainty tolerance and a structure decorated with atoms,
@@ -34,8 +36,16 @@ def is_std_in_bound(
     :param structure: Input structure
     :type structure: FLARE Structure
     :param max_atoms_added: Maximum # of atoms to add
-    :return: (True,[-1]) if no atoms are above cutoff, (False,[...]) of the
-            top `max_atoms_added` uncertainties
+    :param update_style: A string specifying the desired strategy for
+        adding atoms to the training set. Current options are ``add_n'', which
+        adds the n = max_atoms_added highest-uncertainty atoms, and
+        ``threshold'', which adds all atoms with uncertainty greater than
+        update_threshold.
+    :param update_threshold: A float specifying the update threshold. Ignored
+        if update_style is not set to ``threshold''.
+    :return: (True,[-1]) if no atoms are above cutoff, (False,[...]) if at
+        least one atom is above std_tolerance, with the list indicating
+        which atoms have been selected for the training set.
     """
     # set uncertainty threshold
     if std_tolerance == 0:
@@ -51,7 +61,14 @@ def is_std_in_bound(
     for atom, std in enumerate(structure.stds):
         max_stds[atom] = np.max(std)
     stds_sorted = np.argsort(max_stds)
-    target_atoms = list(stds_sorted[-max_atoms_added:])
+
+    if update_style == "add_n":
+        target_atoms = list(stds_sorted[-max_atoms_added:])
+    elif update_style == "threshold":
+        target_atoms = []
+        for atom_index in stds_sorted:
+            if max_stds[atom_index] > update_threshold:
+                target_atoms.append(atom_index)
 
     # if above threshold, return atom
     if max_stds[stds_sorted[-1]] > threshold:
@@ -66,7 +83,7 @@ def is_std_in_bound_per_species(
     noise: float,
     structure: "flare.struc.Structure",
     max_atoms_added: int = inf,
-    max_by_species: dict = {}
+    max_by_species: dict = {},
 ) -> (bool, List[int]):
     """
     Checks the stds of GP prediction assigned to the structure, returns a
@@ -326,18 +343,18 @@ def get_max_cutoff(cell: np.ndarray) -> float:
 
 
 def evaluate_training_atoms(
-        pred_forces: "np.ndarray" = None,
-        dft_forces: "np.ndarray" = None,
-        rel_std_tolerance: float = 4,
-        abs_std_tolerance: float = 0,
-        noise: float = 0,
-        abs_force_tolerance: float = .15,
-        max_force_error: float = inf,
-        structure: 'flare.struc.Structure' = None,
-        max_atoms_from_frame: int = None,
-        max_elts_per_frame: dict = None,
-        max_model_elts: dict = None,
-        training_statistics: dict = None,
+    pred_forces: "np.ndarray" = None,
+    dft_forces: "np.ndarray" = None,
+    rel_std_tolerance: float = 4,
+    abs_std_tolerance: float = 0,
+    noise: float = 0,
+    abs_force_tolerance: float = 0.15,
+    max_force_error: float = inf,
+    structure: "flare.struc.Structure" = None,
+    max_atoms_from_frame: int = None,
+    max_elts_per_frame: dict = None,
+    max_model_elts: dict = None,
+    training_statistics: dict = None,
 ):
     # Set max elements per frame based on model size.
     # E.g. if model will have at most 100 Carbon atoms,
@@ -347,9 +364,9 @@ def evaluate_training_atoms(
     max_atoms_by_elt = {}
     if max_model_elts and training_statistics:
         for key, val in max_model_elts.items():
-            max_atoms_by_elt[key] = val - training_statistics[
-                "envs_by_species"
-            ].get(key, 0)
+            max_atoms_by_elt[key] = val - training_statistics["envs_by_species"].get(
+                key, 0
+            )
             max_atoms_by_elt[key] = max(max_atoms_by_elt[key], 0)
     if max_elts_per_frame:
         for key, val in max_elts_per_frame.items():

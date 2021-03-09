@@ -41,7 +41,7 @@ class OTF:
         write_model (int, optional): If 0, write never. If 1, write at
             end of run. If 2, write after each training and end of run.
             If 3, write after each time atoms are added and end of run.
-        force_only (bool, optional): If True, only use forces for training. 
+        force_only (bool, optional): If True, only use forces for training.
             Default to False, use forces, energy and stress for training.
 
         std_tolerance_factor (float, optional): Threshold that determines
@@ -62,7 +62,8 @@ class OTF:
             hyperparameters of the GP are optimized. After this many
             updates to the GP, the hyperparameters are frozen.
             Defaults to 10.
-
+        min_steps_with_model (int, optional): Minimum number of steps the
+            model takes in between calls to DFT. Defaults to 0.
         force_source (Union[str, object], optional): DFT code used to calculate
             ab initio forces during training. A custom module can be used here
             in place of the DFT modules available in the FLARE package. The
@@ -116,6 +117,9 @@ class OTF:
         output_name: str = "otf_run",
         max_atoms_added: int = 1,
         freeze_hyps: int = 10,
+        min_steps_with_model: int = 0,
+        update_style: str = "add_n",
+        update_threshold: float = None,
         # dft args
         force_source: str = "qe",
         npool: int = None,
@@ -167,10 +171,13 @@ class OTF:
             self.init_atoms = [int(n) for n in range(self.noa)]
         else:
             self.init_atoms = init_atoms
+        self.update_style = update_style
+        self.update_threshold = update_threshold
 
         self.n_cpus = n_cpus  # set number of cpus and npool for DFT runs
         self.npool = npool
         self.mpi = mpi
+        self.min_steps_with_model = min_steps_with_model
 
         self.dft_kwargs = dft_kwargs
         self.store_dft_output = store_dft_output
@@ -178,6 +185,7 @@ class OTF:
         # other args
         self.atom_list = list(range(self.noa))
         self.curr_step = 0
+        self.steps_since_dft = 0
 
         # Set the prediction function based on user inputs.
         # Force only prediction.
@@ -252,10 +260,14 @@ class OTF:
                     self.std_tolerance,
                     self.gp.force_noise,
                     self.structure,
-                    self.max_atoms_added,
+                    max_atoms_added=self.max_atoms_added,
+                    update_style=self.update_style,
+                    update_threshold=self.update_threshold
                 )
 
-                if not std_in_bound:
+                if (not std_in_bound) and (
+                    self.steps_since_dft > self.min_steps_with_model
+                ):
                     # record GP forces
                     self.update_temperature()
                     self.record_state()
@@ -263,6 +275,7 @@ class OTF:
 
                     # run DFT and record forces
                     self.dft_step = True
+                    self.steps_since_dft = 0
                     self.run_dft()
                     dft_frcs = deepcopy(self.structure.forces)
                     dft_stress = deepcopy(self.structure.stress)
@@ -290,8 +303,10 @@ class OTF:
 
             counter += 1
             # TODO: Reinstate velocity rescaling.
-            self.md_step() # update positions by Verlet
+            self.md_step()  # update positions by Verlet
+            self.steps_since_dft += 1
             self.rescale_temperature(self.structure.positions)
+
             self.curr_step += 1
 
             if self.write_model == 3:
